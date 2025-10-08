@@ -1,0 +1,9 @@
+{
+    "$schema": "https://cdn.coollabs.io/coolify/coolify.schema.json",
+    "name": "Trigger v4 stable",
+    "description": "Trigger.dev - The easiest way to integrate and automate your backend",
+    "build":{
+        "build_pack" : "dockercompose",
+        "base_directory": "."
+    }
+}
