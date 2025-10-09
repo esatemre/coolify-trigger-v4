@@ -181,7 +181,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
-
   supervisor:
     networks:
       - trigger-net
@@ -247,3 +246,5 @@ volumes:
   registry-data:
 networks:
   trigger-net:
+  coolify:
+    external: true
