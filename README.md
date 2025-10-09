@@ -2,11 +2,46 @@
 
 This repository contains a Docker Compose configuration for self-hosting Trigger.dev, a powerful workflow automation platform. The setup includes all necessary services: web application, PostgreSQL database, Redis, ElectricSQL, ClickHouse, Docker registry, MinIO object storage, and supervisor components.
 
-## Quick Start with Coolify
+## Quick Start with Coolify v4
 
-1. **Clone this repository** in your Coolify dashboard
-2. **Deploy the application** - Coolify will automatically generate the required environment variables
-3. **Access your Trigger.dev instance** at the provided URL
+### Initial Setup
+
+1. **Create New Project**: Go to Coolify v4 > Projects > New > Public GitHub
+2. **Repository URL**: `https://github.com/essamamdani/coolify-trigger-v4.git`
+3. **Build Settings**: Select "Build" > "docker-compose"
+4. **Click Next**
+5. **Add Ports**:
+   - Web App: `:3000` (use Coolify generated URL or custom domain)
+   - Registry: `:5000` (use Coolify generated URL or custom domain)
+6. **Deploy** the application
+
+### Post-Deployment Configuration
+
+After the first deployment, you need to update the network configuration:
+
+1. **Find Network Name**: In your Coolify project, locate the generated network name (it will be something like `project-xxx-net`)
+2. **Update Environment**: Add to your `.env` file:
+   ```
+   DOCKER_RUNNER_NETWORKS=your-generated-network-name
+   ```
+3. **Redeploy** the application
+
+### Security Setup (Required)
+
+**Before going to production, update the registry credentials:**
+
+1. **Generate new password file**:
+   ```bash
+   docker run --rm --entrypoint htpasswd httpd:2 -Bbn your-username your-secure-password > registry/auth.htpasswd
+   ```
+
+2. **Update environment variables** in Coolify:
+   ```
+   REGISTRY_USERNAME=your-username
+   REGISTRY_PASSWORD=your-secure-password
+   ```
+
+3. **Redeploy** to apply security changes
 
 ## Services Overview
 
