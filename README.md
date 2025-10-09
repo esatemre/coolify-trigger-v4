@@ -135,7 +135,9 @@ The following persistent volumes are used:
 
 All services include health checks to ensure proper startup and monitoring.
 
-## Development
+## Local Development
+
+### Running Locally
 
 For local development, you can run:
 ```bash
@@ -146,6 +148,22 @@ Monitor logs with:
 ```bash
 docker-compose logs -f
 ```
+
+### Deploying to Your Registry
+
+Once your registry is running, you can deploy Trigger.dev workflows to it:
+
+1. **Login to your registry**:
+   ```bash
+   docker login -u your-username -p 'your-secure-password' registry-domain-name
+   ```
+
+2. **Deploy using Trigger.dev CLI**:
+   ```bash
+   npx trigger.dev@latest deploy
+   ```
+
+This will build and deploy your workflows to your self-hosted Trigger.dev registry.
 
 ## Support
 
