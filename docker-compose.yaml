@@ -22,8 +22,8 @@ services:
       MAGIC_LINK_SECRET: '${SERVICE_PASSWORD_MAGIC}'
       ENCRYPTION_KEY: '${SERVICE_PASSWORD_ENCRYPTION}'
       MANAGED_WORKER_SECRET: '${SERVICE_PASSWORD_MANAGEDWORKER}'
-      DATABASE_URL: 'postgresql://${SERVICE_USER_POSTGRES:-postgres}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-trigger}?schema=public&sslmode=disable'
-      DIRECT_URL: 'postgresql://${SERVICE_USER_POSTGRES:-postgres}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-trigger}?schema=public&sslmode=disable'
+      DATABASE_URL: 'postgresql://postgres:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-trigger}?schema=public&sslmode=disable'
+      DIRECT_URL: 'postgresql://postgres:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-trigger}?schema=public&sslmode=disable'
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_TLS_DISABLED: true
@@ -70,7 +70,7 @@ services:
       - -c
       - wal_level=logical
     environment:
-      POSTGRES_USER: '${SERVICE_USER_POSTGRES:-postgres}'
+      POSTGRES_USER: 'postgres'
       POSTGRES_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
       POSTGRES_DB: '${POSTGRES_DB:-trigger}'
     volumes:
@@ -102,7 +102,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: 'postgresql://${SERVICE_USER_POSTGRES:-postgres}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-trigger}?schema=public&sslmode=disable'
+      DATABASE_URL: 'postgresql://postgres:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-trigger}?schema=public&sslmode=disable'
       ELECTRIC_INSECURE: 'true'
       ELECTRIC_USAGE_REPORTING: 'false'
     healthcheck:
