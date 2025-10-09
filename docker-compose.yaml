@@ -2,6 +2,7 @@ services:
   webapp:
     networks:
       - trigger-net
+      - coolify
     image: 'ghcr.io/triggerdotdev/trigger.dev:main'
     restart: unless-stopped
     depends_on:
@@ -64,6 +65,7 @@ services:
   postgres:
     networks:
       - trigger-net
+      - coolify
     image: postgres:14
     restart: unless-stopped
     command:
@@ -84,6 +86,7 @@ services:
   redis:
     networks:
       - trigger-net
+      - coolify
     image: 'redis:7'
     restart: unless-stopped
     volumes:
@@ -97,6 +100,7 @@ services:
   electric:
     networks:
       - trigger-net
+      - coolify
     image: 'electricsql/electric:1.0.24'
     restart: unless-stopped
     depends_on:
@@ -114,6 +118,7 @@ services:
   clickhouse:
     networks:
       - trigger-net
+      - coolify
     image: 'bitnamilegacy/clickhouse:latest'
     restart: unless-stopped
     environment:
@@ -131,6 +136,7 @@ services:
   registry:
     networks:
       - trigger-net
+      - coolify
     image: 'registry:2'
     restart: unless-stopped
     volumes:
@@ -159,6 +165,7 @@ services:
   minio:
     networks:
       - trigger-net
+      - coolify
     image: bitnamilegacy/minio:latest
     restart: unless-stopped
     environment:
@@ -178,6 +185,7 @@ services:
   supervisor:
     networks:
       - trigger-net
+      - coolify
     image: 'ghcr.io/triggerdotdev/supervisor:v4-beta'
     restart: unless-stopped
     depends_on:
@@ -212,6 +220,7 @@ services:
   docker-proxy:
     networks:
       - trigger-net
+      - coolify
     image: 'tecnativa/docker-socket-proxy:latest'
     restart: unless-stopped
     volumes:
