@@ -136,20 +136,9 @@ services:
     volumes:
       - './registry/auth.htpasswd:/auth/htpasswd:ro'
     environment:
-      REGISTRY_STORAGE: filesystem
-      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_REALM: 'Registry Realm'
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
-      REGISTRY_HTTP_ADDR: '0.0.0.0:5000'
-      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Origin: "['*']"
-      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Methods: "['GET','HEAD','PUT','POST','DELETE','OPTIONS']"
-      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Headers: "['Authorization','Content-Type']"
-      REGISTRY_STORAGE_DELETE_ENABLED: 'true'
-      REGISTRY_HTTP_IDLE_TIMEOUT: '1h'
-      REGISTRY_HTTP_WRITE_TIMEOUT: '1h'
-      REGISTRY_HTTP_READ_TIMEOUT: '1h'
-      REGISTRY_HTTP_SECRET: '${SERVICE_PASSWORD_64_REGISTRY_HTTP_SECRET}'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/"]
       interval: 10s
