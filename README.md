@@ -1,4 +1,4 @@
-# Trigger.dev Self-Hosted Setup
+# Trigger.dev v4 Self-Hosted on Coolify v4 (External Container Registry Required)
 
 This repository contains a Docker Compose configuration for self-hosting Trigger.dev, a powerful workflow automation platform. The setup includes all necessary services: web application, PostgreSQL database, Redis, ElectricSQL, ClickHouse, MinIO object storage, and supervisor components.
 
@@ -13,8 +13,8 @@ This repository contains a Docker Compose configuration for self-hosting Trigger
    `https://github.com/esatemre/coolify-trigger-v4.git`
 4. For **Build Pack**, select `Docker Compose`.
 5. Click **Continue** and follow prompts.
-11. When configuring ports, expose port `3000` for the Web App (use Coolify's generated domain or your own).
-12. **Deploy** the application.
+6. When configuring ports, expose port `3000` for the Web App (use Coolify's generated domain or your own).
+7. **Deploy** the application.
 
 
 
@@ -23,11 +23,17 @@ This repository contains a Docker Compose configuration for self-hosting Trigger
 After the first deployment, you need to configure **two critical settings** for the setup to work properly:
 
 #### 1. Network Configuration (Required)
-1. **Find Network Name**: In your Coolify project, locate the generated network name (it will be something like `project-xxx-net`)
+1. **Find Network Name**: After deployment, in your Coolify project:
+   - Go to your project dashboard
+   - Look for the **services** section showing your containers
+   - You'll see a network ID like `xc324534265fdsfsfdfgfd4` in the services list
+   - **Copy this network ID** (it's the long alphanumeric string)
+
 2. **Add Environment Variable**: In Coolify, go to your project → Environment Variables → Add:
    ```
-   DOCKER_RUNNER_NETWORKS=your-generated-network-name
+   DOCKER_RUNNER_NETWORKS=xc324534265fdsfsfdfgfd4
    ```
+   (Replace with your actual network ID)
 
 #### 2. Container Registry Configuration (Required for Task Deployments)
 **Before deploying any Trigger.dev tasks, you must configure your container registry:**

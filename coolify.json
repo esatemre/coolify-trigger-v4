@@ -1,7 +1,8 @@
 {
     "$schema": "https://cdn.coollabs.io/coolify/coolify.schema.json",
-    "name": "Trigger v4 stable",
-    "description": "Trigger.dev - The easiest way to integrate and automate your backend",
+    "name": "Trigger v4",
+    "description": "An open source Background Jobs framework for TypeScript",
+    "tags": ["trigger.dev", "background jobs", "typescript", "trigger", "jobs", "cron", "scheduler"],
     "build":{
         "build_pack" : "dockercompose",
         "base_directory": "."
