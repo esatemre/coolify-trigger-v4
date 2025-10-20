@@ -2,7 +2,7 @@ services:
   trigger:
     networks:
       - trigger-net
-    image: 'ghcr.io/triggerdotdev/trigger.dev:main'
+    image: 'ghcr.io/triggerdotdev/trigger.dev:${TRIGGER_IMAGE_TAG:-v4-beta}'
     restart: unless-stopped
     depends_on:
       - postgres
@@ -10,7 +10,6 @@ services:
       - clickhouse
       - electric
       - minio
-      - registry
     user: root
     command: "sh -c \"chown -R node:node /home/node/shared && exec ./scripts/entrypoint.sh\"\n"
     environment:
@@ -29,10 +28,10 @@ services:
       REDIS_TLS_DISABLED: true
       ELECTRIC_ORIGIN: 'http://electric:3000'
       DEV_OTEL_EXPORTER_OTLP_ENDPOINT: '${SERVICE_URL_TRIGGER}/otel'
-      DEPLOY_REGISTRY_HOST: '${SERVICE_FQDN_REGISTRY}'
-      DEPLOY_REGISTRY_NAMESPACE: '${REGISTRY_NAMESPACE:-trigger}'
-      DEPLOY_REGISTRY_USERNAME: ${REGISTRY_USERNAME:-trigger}
-      DEPLOY_REGISTRY_PASSWORD: '${REGISTRY_PASSWORD:-very-secure-indeed}'
+      DEPLOY_REGISTRY_HOST: '${DEPLOY_REGISTRY_HOST:-ghcr.io}'
+      DEPLOY_REGISTRY_NAMESPACE: '${DEPLOY_REGISTRY_NAMESPACE:-}'
+      DEPLOY_REGISTRY_USERNAME: ${DEPLOY_REGISTRY_USERNAME:-}
+      DEPLOY_REGISTRY_PASSWORD: '${DEPLOY_REGISTRY_PASSWORD:-}'
       OBJECT_STORE_BASE_URL: 'http://minio:9000'
       OBJECT_STORE_ACCESS_KEY_ID: admin
       OBJECT_STORE_SECRET_ACCESS_KEY: '${SERVICE_PASSWORD_MINIO}'
@@ -49,6 +48,45 @@ services:
       RUN_REPLICATION_LOG_LEVEL: info
       APP_LOG_LEVEL: info
       TRIGGER_TELEMETRY_DISABLED: 0
+      # Email configuration (optional - magic links logged if not set)
+      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-}
+      FROM_EMAIL: ${FROM_EMAIL:-}
+      REPLY_TO_EMAIL: ${REPLY_TO_EMAIL:-}
+      # Resend
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      # SMTP alternative
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      # GitHub OAuth (optional)
+      AUTH_GITHUB_CLIENT_ID: ${AUTH_GITHUB_CLIENT_ID:-}
+      AUTH_GITHUB_CLIENT_SECRET: ${AUTH_GITHUB_CLIENT_SECRET:-}
+      # Email whitelist (applies to all auth methods)
+      WHITELISTED_EMAILS: ${WHITELISTED_EMAILS:-}
+      # AWS SES alternative
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # Admin access (regex pattern to auto-promote users to admin)
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      # Concurrency limits (capacity planning)
+      DEFAULT_ENV_EXECUTION_CONCURRENCY_LIMIT: ${DEFAULT_ENV_EXECUTION_CONCURRENCY_LIMIT:-100}
+      DEFAULT_ORG_EXECUTION_CONCURRENCY_LIMIT: ${DEFAULT_ORG_EXECUTION_CONCURRENCY_LIMIT:-300}
+      # Development settings
+      DEV_MAX_CONCURRENT_RUNS: ${DEV_MAX_CONCURRENT_RUNS:-25}
+      # Worker settings
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-10}
+      WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1000}
+      # Payload & metadata limits
+      TASK_PAYLOAD_OFFLOAD_THRESHOLD: ${TASK_PAYLOAD_OFFLOAD_THRESHOLD:-524288}
+      TASK_PAYLOAD_MAXIMUM_SIZE: ${TASK_PAYLOAD_MAXIMUM_SIZE:-3145728}
+      BATCH_TASK_PAYLOAD_MAXIMUM_SIZE: ${BATCH_TASK_PAYLOAD_MAXIMUM_SIZE:-1000000}
+      TASK_RUN_METADATA_MAXIMUM_SIZE: ${TASK_RUN_METADATA_MAXIMUM_SIZE:-262144}
+      # Realtime settings
+      REALTIME_STREAM_MAX_LENGTH: ${REALTIME_STREAM_MAX_LENGTH:-1000}
+      REALTIME_STREAM_TTL: ${REALTIME_STREAM_TTL:-86400}
     volumes:
       - 'shared-data:/home/node/shared'
     healthcheck:
@@ -64,7 +102,7 @@ services:
   postgres:
     networks:
       - trigger-net
-    image: postgres:14
+    image: postgres:${POSTGRES_IMAGE_TAG:-14}
     restart: unless-stopped
     command:
       - -c
@@ -84,7 +122,7 @@ services:
   redis:
     networks:
       - trigger-net
-    image: 'redis:7'
+    image: 'redis:${REDIS_IMAGE_TAG:-7}'
     restart: unless-stopped
     volumes:
       - 'redis-data:/data'
@@ -97,7 +135,7 @@ services:
   electric:
     networks:
       - trigger-net
-    image: 'electricsql/electric:1.0.24'
+    image: 'electricsql/electric:${ELECTRIC_IMAGE_TAG:-1.0.24}'
     restart: unless-stopped
     depends_on:
       - postgres
@@ -114,7 +152,7 @@ services:
   clickhouse:
     networks:
       - trigger-net
-    image: 'bitnamilegacy/clickhouse:latest'
+    image: 'bitnamilegacy/clickhouse:${CLICKHOUSE_IMAGE_TAG:-latest}'
     restart: unless-stopped
     environment:
       CLICKHOUSE_ADMIN_USER: ${CLICKHOUSE_ADMIN_USER:-default}
@@ -128,27 +166,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-  registry:
-    networks:
-      - trigger-net
-    image: 'registry:2'
-    restart: unless-stopped
-    volumes:
-      - './registry/auth.htpasswd:/auth/htpasswd:ro'
-    environment:
-      REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: 'Registry Realm'
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
   minio:
     networks:
       - trigger-net
-    image: bitnamilegacy/minio:latest
+    image: bitnamilegacy/minio:${MINIO_IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: admin
@@ -167,7 +188,7 @@ services:
   supervisor:
     networks:
       - trigger-net
-    image: 'ghcr.io/triggerdotdev/supervisor:v4-beta'
+    image: 'ghcr.io/triggerdotdev/supervisor:${TRIGGER_IMAGE_TAG:-v4-beta}'
     restart: unless-stopped
     depends_on:
       - docker-proxy
@@ -183,13 +204,17 @@ services:
       TRIGGER_WORKLOAD_API_PORT_EXTERNAL: 8020
       DOCKER_HOST: tcp://docker-proxy:2375
       DOCKER_RUNNER_NETWORKS: ${DOCKER_RUNNER_NETWORKS:-trigger-net}
-      DOCKER_AUTOREMOVE_EXITED_CONTAINERS: 1
-      DOCKER_REGISTRY_URL: ${SERVICE_URL_REGISTRY}
-      DOCKER_REGISTRY_USERNAME: ${REGISTRY_USERNAME:-trigger}
-      DOCKER_REGISTRY_PASSWORD: '${REGISTRY_PASSWORD:-very-secure-indeed}'
-      DEBUG: 1
-      ENFORCE_MACHINE_PRESETS: 1
-      TRIGGER_DEQUEUE_INTERVAL_MS: 1000
+      DOCKER_AUTOREMOVE_EXITED_CONTAINERS: ${DOCKER_AUTOREMOVE_EXITED_CONTAINERS:-1}
+      DOCKER_REGISTRY_URL: ${DEPLOY_REGISTRY_HOST:-ghcr.io}
+      DOCKER_REGISTRY_USERNAME: ${DEPLOY_REGISTRY_USERNAME:-}
+      DOCKER_REGISTRY_PASSWORD: '${DEPLOY_REGISTRY_PASSWORD:-}'
+      DOCKER_ENFORCE_MACHINE_PRESETS: ${DOCKER_ENFORCE_MACHINE_PRESETS:-1}
+      DEBUG: ${SUPERVISOR_DEBUG:-0}
+      TRIGGER_DEQUEUE_INTERVAL_MS: ${TRIGGER_DEQUEUE_INTERVAL_MS:-250}
+      TRIGGER_DEQUEUE_IDLE_INTERVAL_MS: ${TRIGGER_DEQUEUE_IDLE_INTERVAL_MS:-1000}
+      # Runner settings
+      RUNNER_PRETTY_LOGS: ${RUNNER_PRETTY_LOGS:-false}
+      RUNNER_ADDITIONAL_ENV_VARS: ${RUNNER_ADDITIONAL_ENV_VARS:-}
     volumes:
       - 'shared-data:/home/node/shared'
     healthcheck:
@@ -201,7 +226,7 @@ services:
   docker-proxy:
     networks:
       - trigger-net
-    image: 'tecnativa/docker-socket-proxy:latest'
+    image: 'tecnativa/docker-socket-proxy:${DOCKER_PROXY_IMAGE_TAG:-latest}'
     restart: unless-stopped
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock:ro'
@@ -224,6 +249,5 @@ volumes:
   clickhouse-data:
   minio-data:
   shared-data:
-  registry-data:
 networks:
   trigger-net:

@@ -50,72 +50,257 @@ After the first deployment, you need to update the network configuration:
 - **Redis**: Caching and session storage
 - **ElectricSQL**: Real-time database synchronization
 - **ClickHouse**: Analytics and event storage
-- **Registry**: Private Docker registry for deployments (Port 5000)
 - **MinIO**: Object storage for packages and assets
 - **Supervisor**: Manages worker execution and Docker operations
 
-## Security Configuration
+## Container Registry Setup
 
-### Registry Authentication
+Trigger.dev needs a container registry to store built task images. We recommend **GitHub Container Registry (GHCR)** - it's free, unlimited, and works seamlessly with GitHub Actions.
 
-The Docker registry uses HTTP Basic Authentication with default credentials that are **not secure** for production use.
+### Using GitHub Container Registry (Recommended)
 
-**Default Settings:**
-- Registry URL: `localhost:5000` (internal) or your Coolify domain
-- Username: `trigger`
-- Password: `very-secure-indeed`
+1. **Create a GitHub Personal Access Token:**
+   - Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+   - Click "Generate new token (classic)"
+   - Give it a name like "Trigger.dev Deploy"
+   - Select scope: `write:packages`
+   - Generate and copy the token
 
-### ⚠️ Important Security Notice
+2. **Configure in Coolify:**
+   ```
+   DEPLOY_REGISTRY_HOST=ghcr.io
+   DEPLOY_REGISTRY_NAMESPACE=your-github-username
+   DEPLOY_REGISTRY_USERNAME=your-github-username
+   DEPLOY_REGISTRY_PASSWORD=your_github_token
+   ```
 
-**You MUST change these default credentials before deploying to production!**
-
-The default password `very-secure-indeed` is clearly insecure. To update the registry authentication:
-
-1. Create the auth directory if it doesn't exist:
+3. **Deploy your tasks:**
    ```bash
-   mkdir -p registry
+   pnpm dlx trigger.dev@latest deploy \
+     --self-hosted \
+     --registry ghcr.io \
+     --namespace your-github-username/trigger-images
    ```
 
-2. Generate a new password file using Docker:
-   ```bash
-   docker run \
-     --entrypoint htpasswd \
-     httpd:2 -Bbn your-username your-secure-password > registry/auth.htpasswd
+### Using Docker Hub (Alternative)
+
+If you prefer Docker Hub:
+
+1. Create a Docker Hub account and access token
+2. Configure in Coolify:
+   ```
+   DEPLOY_REGISTRY_HOST=docker.io
+   DEPLOY_REGISTRY_NAMESPACE=your-dockerhub-username
+   DEPLOY_REGISTRY_USERNAME=your-dockerhub-username
+   DEPLOY_REGISTRY_PASSWORD=your_dockerhub_token
    ```
 
-   On Windows, ensure correct encoding:
-   ```powershell
-   docker run --rm --entrypoint htpasswd httpd:2 -Bbn your-username your-secure-password | Set-Content -Encoding ASCII registry/auth.htpasswd
+### GitHub Actions Integration
+
+Add to your workflow (`.github/workflows/deploy.yml`):
+
+```yaml
+- name: 🔑 Login to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+
+- name: 🚀 Deploy Trigger.dev tasks
+  env:
+    TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+    TRIGGER_API_URL: ${{ secrets.TRIGGER_API_URL }}
+  run: |
+    pnpm dlx trigger.dev@latest deploy \
+      --self-hosted \
+      --registry ghcr.io \
+      --namespace ${{ github.repository_owner }}/trigger-images
+```
+
+## Email Configuration
+
+By default, Trigger.dev logs magic links to the console instead of sending emails. This works for development but is not suitable for production.
+
+### Magic Link Behavior
+
+- **Default (no email configured)**: Magic links appear in webapp container logs
+  - In Coolify, check the "Logs" tab for the trigger service
+  - Look for lines containing the magic link URL
+
+- **With email configured**: Links are sent to the user's email address
+
+### Resend Setup (Recommended)
+
+[Resend](https://resend.com) provides a simple API for transactional emails.
+
+1. Sign up at [resend.com](https://resend.com) and get an API key
+2. Add to your Coolify environment variables:
    ```
+   EMAIL_TRANSPORT=resend
+   FROM_EMAIL=noreply@yourdomain.com
+   REPLY_TO_EMAIL=support@yourdomain.com
+   RESEND_API_KEY=re_your_api_key_here
+   ```
+3. Redeploy the application
 
-   Replace `your-username` and `your-secure-password` with your desired credentials.
+### SMTP Setup (Alternative)
 
-3. Update your environment variables to match:
-   - `REGISTRY_USERNAME`: Set to your chosen username
-   - `REGISTRY_PASSWORD`: Set to your secure password
+For custom SMTP servers:
 
-4. Restart the registry service
+```
+EMAIL_TRANSPORT=smtp
+FROM_EMAIL=noreply@yourdomain.com
+REPLY_TO_EMAIL=support@yourdomain.com
+SMTP_HOST=smtp.yourdomain.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+```
 
-For more information about Docker registry authentication, see the [official Docker Registry documentation](https://docs.docker.com/registry/configuration/#auth).
+**Note:** Set `SMTP_SECURE=true` only if your SMTP host requires it (usually port 465).
+
+### AWS SES Setup (Alternative)
+
+For Amazon Simple Email Service:
+
+```
+EMAIL_TRANSPORT=aws-ses
+FROM_EMAIL=noreply@yourdomain.com
+REPLY_TO_EMAIL=support@yourdomain.com
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+```
+
+AWS credentials can also be provided via EC2 instance metadata if running on AWS.
+
+### GitHub OAuth (Optional)
+
+For easier login, you can enable GitHub OAuth:
+
+1. Create a GitHub OAuth App at [GitHub Developer Settings](https://github.com/settings/developers)
+2. Set callback URL to: `https://your-trigger-domain.com/auth/github/callback`
+3. Add to Coolify environment variables:
+   ```
+   AUTH_GITHUB_CLIENT_ID=your_client_id
+   AUTH_GITHUB_CLIENT_SECRET=your_client_secret
+   ```
+4. Redeploy the application
+
+### Restricting Access
+
+To limit who can sign up/login, use email whitelisting with a regex pattern:
+
+```
+WHITELISTED_EMAILS="admin@company\.com|team@company\.com"
+```
+
+This applies to both magic link and GitHub OAuth authentication.
+
+### Admin Auto-Promotion
+
+Automatically promote specific users to admin role using a regex pattern:
+
+```
+ADMIN_EMAILS="admin@company\.com|ops@company\.com"
+```
+
+Users matching this pattern will be automatically promoted to admin when they first log in.
 
 ## Environment Variables
 
-Coolify automatically generates all required `SERVICE_*` environment variables. You can optionally customize the following variables in your `.env` file (see `.env-example` for defaults):
+Coolify automatically generates all required `SERVICE_*` environment variables (passwords, URLs, FQDNs). You can optionally customize the following variables in your `.env` file. See `.env-example` for a complete reference with detailed comments.
 
-- `POSTGRES_DB`: PostgreSQL database name (default: trigger)
-- `REGISTRY_NAMESPACE`: Docker registry namespace (default: trigger)
-- `NODE_MAX_OLD_SPACE_SIZE`: Node.js memory limit in MB (default: 1024)
-- `TRIGGER_TELEMETRY_DISABLED`: Disable telemetry (default: 0)
-- `INTERNAL_OTEL_TRACE_LOGGING_ENABLED`: Enable internal tracing logs (default: 0)
+### Image Versions
 
-### ⚠️ Critical Security Variables
+Lock versions for production stability:
 
-**These registry credentials are exposed to the public and MUST be changed before production deployment:**
+- `TRIGGER_IMAGE_TAG`: Trigger.dev and supervisor image version (default: `v4-beta`)
+- `POSTGRES_IMAGE_TAG`: PostgreSQL version (default: `14`)
+- `REDIS_IMAGE_TAG`: Redis version (default: `7`)
+- `ELECTRIC_IMAGE_TAG`: ElectricSQL version (default: `1.0.24`)
+- `CLICKHOUSE_IMAGE_TAG`: ClickHouse version (default: `latest`)
+- `MINIO_IMAGE_TAG`: MinIO version (default: `latest`)
+- `DOCKER_PROXY_IMAGE_TAG`: Docker socket proxy version (default: `latest`)
 
-- `REGISTRY_USERNAME`: Registry username (default: `trigger`) - **Change this!**
-- `REGISTRY_PASSWORD`: Registry password (default: `very-secure-indeed`) - **Change this!**
+### Database Configuration
 
-Update these in your `.env` file and regenerate the `registry/auth.htpasswd` file as described in the Security Configuration section above.
+- `POSTGRES_DB`: PostgreSQL database name (default: `trigger`)
+- `CLICKHOUSE_ADMIN_USER`: ClickHouse admin username (default: `default`)
+
+### Docker Configuration
+
+- `DOCKER_RUNNER_NETWORKS`: Network name for worker containers (default: `trigger-net`)
+  - **Important:** Update this after first deployment with your actual Coolify network name
+
+### Node.js Configuration
+
+- `NODE_MAX_OLD_SPACE_SIZE`: Memory limit in MiB (default: `1024`)
+  - Adjust based on your machine: 1600 (2GB), 3200 (4GB), 4800 (6GB), 6400 (8GB)
+
+### Container Registry Configuration
+
+For deploying Trigger.dev tasks:
+
+- `DEPLOY_REGISTRY_HOST`: Registry host (default: `ghcr.io`)
+- `DEPLOY_REGISTRY_NAMESPACE`: Your GitHub username or org
+- `DEPLOY_REGISTRY_USERNAME`: GitHub username
+- `DEPLOY_REGISTRY_PASSWORD`: GitHub Personal Access Token with `write:packages` scope
+
+### Email Configuration (Optional)
+
+For production magic link delivery via email:
+
+- `EMAIL_TRANSPORT`: Set to `resend`, `smtp`, or `aws-ses` (default: empty = console logs only)
+- `FROM_EMAIL`: Sender email address
+- `REPLY_TO_EMAIL`: Reply-to email address
+- **Resend:** `RESEND_API_KEY`
+- **SMTP:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`
+- **AWS SES:** `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+
+### Authentication & Access Control (Optional)
+
+- `AUTH_GITHUB_CLIENT_ID`: GitHub OAuth client ID
+- `AUTH_GITHUB_CLIENT_SECRET`: GitHub OAuth client secret
+- `WHITELISTED_EMAILS`: Regex pattern to restrict login access
+- `ADMIN_EMAILS`: Regex pattern to auto-promote users to admin
+
+### Concurrency & Performance
+
+- `DEFAULT_ENV_EXECUTION_CONCURRENCY_LIMIT`: Max concurrent tasks per environment (default: `100`)
+- `DEFAULT_ORG_EXECUTION_CONCURRENCY_LIMIT`: Max concurrent tasks per organization (default: `300`)
+- `DEV_MAX_CONCURRENT_RUNS`: Max concurrent dev runs via CLI (default: `25`)
+- `WORKER_CONCURRENCY`: Internal worker concurrency (default: `10`)
+- `WORKER_POLL_INTERVAL`: Worker poll interval in ms (default: `1000`)
+
+### Payload & Metadata Limits
+
+- `TASK_PAYLOAD_OFFLOAD_THRESHOLD`: Payload size before offloading to S3 in bytes (default: `524288` = 512KB)
+- `TASK_PAYLOAD_MAXIMUM_SIZE`: Max task payload size in bytes (default: `3145728` = 3MB)
+- `BATCH_TASK_PAYLOAD_MAXIMUM_SIZE`: Max batch payload size in bytes (default: `1000000` = 1MB)
+- `TASK_RUN_METADATA_MAXIMUM_SIZE`: Max metadata size in bytes (default: `262144` = 256KB)
+
+### Realtime Settings
+
+- `REALTIME_STREAM_MAX_LENGTH`: Max realtime stream length (default: `1000`)
+- `REALTIME_STREAM_TTL`: Realtime stream TTL in seconds (default: `86400` = 1 day)
+
+### Supervisor Configuration (Advanced)
+
+- `SUPERVISOR_DEBUG`: Enable debug logging (default: `1`)
+- `DOCKER_ENFORCE_MACHINE_PRESETS`: Enforce CPU/memory limits (default: `1`)
+- `DOCKER_AUTOREMOVE_EXITED_CONTAINERS`: Auto-remove finished containers (default: `1`)
+- `TRIGGER_DEQUEUE_INTERVAL_MS`: Dequeue interval in ms (default: `1000`)
+- `TRIGGER_DEQUEUE_IDLE_INTERVAL_MS`: Idle dequeue interval in ms (default: `1000`)
+- `RUNNER_PRETTY_LOGS`: Pretty print runner logs (default: `false`)
+- `RUNNER_ADDITIONAL_ENV_VARS`: Additional env vars for runners (CSV format)
+
+### Telemetry & Monitoring
+
+- `TRIGGER_TELEMETRY_DISABLED`: Disable telemetry (default: `0`, set to `1` to disable)
+- `INTERNAL_OTEL_TRACE_LOGGING_ENABLED`: Enable internal tracing logs (default: `0`)
 
 ## Networking
 
@@ -160,7 +345,7 @@ Once your registry is running, you can deploy Trigger.dev workflows to it:
 
 2. **Deploy using Trigger.dev CLI**:
    ```bash
-   npx trigger.dev@latest deploy
+   pnpm dlx trigger.dev@latest deploy
    ```
 
 This will build and deploy your workflows to your self-hosted Trigger.dev registry.
