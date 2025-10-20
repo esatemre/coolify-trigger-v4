@@ -1,18 +1,17 @@
 # Trigger.dev Self-Hosted Setup
 
-This repository contains a Docker Compose configuration for self-hosting Trigger.dev, a powerful workflow automation platform. The setup includes all necessary services: web application, PostgreSQL database, Redis, ElectricSQL, ClickHouse, Docker registry, MinIO object storage, and supervisor components.
+This repository contains a Docker Compose configuration for self-hosting Trigger.dev, a powerful workflow automation platform. The setup includes all necessary services: web application, PostgreSQL database, Redis, ElectricSQL, ClickHouse, MinIO object storage, and supervisor components.
 
 ## Quick Start with Coolify v4
 
 ### Initial Setup
 
 1. **Create New Project**: Go to Coolify v4 > Projects > New > Public GitHub
-2. **Repository URL**: `https://github.com/essamamdani/coolify-trigger-v4.git`
+2. **Repository URL**: `https://github.com/esatemre/coolify-trigger-v4.git`
 3. **Build Settings**: Select "Build" > "docker-compose"
 4. **Click Next**
 5. **Add Ports**:
    - Web App: `:3000` (use Coolify generated URL or custom domain)
-   - Registry: `:5000` (use Coolify generated URL or custom domain)
 6. **Deploy** the application
 
 ### Post-Deployment Configuration
@@ -26,22 +25,17 @@ After the first deployment, you need to update the network configuration:
    ```
 3. **Redeploy** the application
 
-### Security Setup (Required)
+### Container Registry Setup (Required for Deployments)
 
-**Before going to production, update the registry credentials:**
+**Configure your container registry for deploying Trigger.dev tasks:**
 
-1. **Generate new password file**:
-   ```bash
-   docker run --rm --entrypoint htpasswd httpd:2 -Bbn your-username your-secure-password > registry/auth.htpasswd
-   ```
+1. **Choose your registry** (GitHub Container Registry recommended):
+   - **GHCR**: Free, unlimited, works with GitHub Actions
+   - **Docker Hub**: Alternative option
 
-2. **Update environment variables** in Coolify:
-   ```
-   REGISTRY_USERNAME=your-username
-   REGISTRY_PASSWORD=your-secure-password
-   ```
+2. **Configure in Coolify** (see "Container Registry Setup" section below)
 
-3. **Redeploy** to apply security changes
+3. **Deploy your tasks** using the Trigger.dev CLI
 
 ## Services Overview
 
@@ -314,7 +308,6 @@ The following persistent volumes are used:
 - `clickhouse-data`: ClickHouse data
 - `minio-data`: MinIO data
 - `shared-data`: Shared data between webapp and supervisor
-- `registry-data`: Docker registry storage
 
 ## Health Checks
 
@@ -334,21 +327,21 @@ Monitor logs with:
 docker-compose logs -f
 ```
 
-### Deploying to Your Registry
+### Deploying Your Tasks
 
-Once your registry is running, you can deploy Trigger.dev workflows to it:
+Once your Trigger.dev instance is running, you can deploy workflows to it:
 
-1. **Login to your registry**:
-   ```bash
-   docker login -u your-username -p 'your-secure-password' registry-domain-name
-   ```
+1. **Configure your registry** (see "Container Registry Setup" section above)
 
 2. **Deploy using Trigger.dev CLI**:
    ```bash
-   pnpm dlx trigger.dev@latest deploy
+   pnpm dlx trigger.dev@latest deploy \
+     --self-hosted \
+     --registry ghcr.io \
+     --namespace your-github-username/trigger-images
    ```
 
-This will build and deploy your workflows to your self-hosted Trigger.dev registry.
+This will build and deploy your workflows to your configured container registry.
 
 ## Support
 
