@@ -47,7 +47,7 @@ services:
       RUN_REPLICATION_CLICKHOUSE_URL: 'http://${CLICKHOUSE_ADMIN_USER:-default}:${SERVICE_PASSWORD_64_CLICKHOUSE}@clickhouse:8123'
       RUN_REPLICATION_LOG_LEVEL: info
       APP_LOG_LEVEL: info
-      TRIGGER_TELEMETRY_DISABLED: 0
+      TRIGGER_TELEMETRY_DISABLED: 1
       # Email configuration (optional - magic links logged if not set)
       EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-}
       FROM_EMAIL: ${FROM_EMAIL:-}
