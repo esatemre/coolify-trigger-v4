@@ -5,7 +5,8 @@ services:
     image: 'ghcr.io/triggerdotdev/trigger.dev:${TRIGGER_IMAGE_TAG:-v4-beta}'
     restart: unless-stopped
     labels:
-      - traefik.docker.network=${DOCKER_RUNNER_NETWORKS:-trigger-net}
+      # Hacky solution for dashboard to work - add DOCKER_RUNNER_NETWORKS netowrk name as hardcoded 
+      - "traefik.docker.network=qg0so04w8o8ko4g0sggcs8k8"
     depends_on:
       - postgres
       - redis
