@@ -5,7 +5,8 @@ services:
     image: 'ghcr.io/triggerdotdev/trigger.dev:${TRIGGER_IMAGE_TAG:-v4-beta}'
     restart: unless-stopped
     labels:
-      # Hacky solution for dashboard to work - add DOCKER_RUNNER_NETWORKS netowrk name as hardcoded 
+      # Hacky solution for dashboard to work - add DOCKER_RUNNER_NETWORKS netowrk name as hardcoded
+      # Thanks to https://github.com/coollabsio/coolify/discussions/2439#discussioncomment-10950035  
       - "traefik.docker.network=qg0so04w8o8ko4g0sggcs8k8"
     depends_on:
       - postgres
