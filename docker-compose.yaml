@@ -4,6 +4,8 @@ services:
       - trigger-net
     image: 'ghcr.io/triggerdotdev/trigger.dev:${TRIGGER_IMAGE_TAG:-v4-beta}'
     restart: unless-stopped
+    labels:
+      - traefik.docker.network=${DOCKER_RUNNER_NETWORKS:-trigger-net}
     depends_on:
       - postgres
       - redis
