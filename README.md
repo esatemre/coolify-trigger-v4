@@ -20,7 +20,7 @@ This repository contains a Docker Compose configuration for self-hosting Trigger
 
 ### Post-Deployment Configuration
 
-After the first deployment, you need to configure **two critical settings** for the setup to work properly:
+After the first deployment, you need to configure **three critical settings** for the setup to work properly:
 
 #### 1. Network Configuration (Required)
 1. **Find Network Name**: After deployment, in your Coolify project:
@@ -35,6 +35,19 @@ After the first deployment, you need to configure **two critical settings** for 
    ```
    (Replace with your actual network ID)
 
+3. **Fix Traefik Network Race Condition**: To prevent flaky webapp behavior due to Coolify's Traefik networking race condition, you must update the `docker-compose.yaml` file:
+   - Open `docker-compose.yaml` in your repository
+   - Find the `trigger` service's `labels` section (around line 10)
+   - Update the `traefik.docker.network` label with your actual Coolify network name:
+     ```yaml
+     labels:
+       # Hacky solution for dashboard to work - add DOCKER_RUNNER_NETWORKS network name as hardcoded
+       # Thanks to https://github.com/coollabsio/coolify/discussions/2439#discussioncomment-10950035
+       - "traefik.docker.network=YOUR_NETWORK_ID_HERE"
+     ```
+   - Replace `YOUR_NETWORK_ID_HERE` with the same network ID you used for `DOCKER_RUNNER_NETWORKS`
+   - Commit and push the change, then redeploy
+
 #### 2. Container Registry Configuration (Required for Task Deployments)
 **Before deploying any Trigger.dev tasks, you must configure your container registry:**
 
@@ -44,17 +57,19 @@ After the first deployment, you need to configure **two critical settings** for 
 
 2. **Add Environment Variables in Coolify** (see "Container Registry Setup" section below)
 
-3. **Redeploy** the application to apply both network and registry settings
+3. **Redeploy** the application to apply all network, Traefik label, and registry settings
 
 ### ⚠️ Important: Required Configuration
 
-**Both of these settings are MANDATORY for the setup to work:**
+**All of these settings are MANDATORY for the setup to work:**
 
-1. **Network Name** - Required for worker containers to communicate
-2. **Registry Credentials** - Required for deploying and running tasks
+1. **Network Name** (Environment Variable) - Required for worker containers to communicate
+2. **Traefik Network Label** (docker-compose.yaml) - Required to prevent flaky webapp due to Coolify Traefik race condition
+3. **Registry Credentials** - Required for deploying and running tasks
 
 **Without these, you'll see errors like:**
 - `Failed to read worker token from file` (network issue)
+- Flaky/inconsistent webapp behavior (Traefik network race condition)
 - `No Docker registry credentials provided` (registry issue)
 
 ## Services Overview
@@ -305,17 +320,19 @@ For production magic link delivery via email:
 
 ### Supervisor Configuration (Advanced)
 
-- `SUPERVISOR_DEBUG`: Enable debug logging (default: `1`)
+- `SUPERVISOR_DEBUG`: Enable debug logging (default: `0`)
 - `DOCKER_ENFORCE_MACHINE_PRESETS`: Enforce CPU/memory limits (default: `1`)
 - `DOCKER_AUTOREMOVE_EXITED_CONTAINERS`: Auto-remove finished containers (default: `1`)
-- `TRIGGER_DEQUEUE_INTERVAL_MS`: Dequeue interval in ms (default: `1000`)
-- `TRIGGER_DEQUEUE_IDLE_INTERVAL_MS`: Idle dequeue interval in ms (default: `1000`)
+- `TRIGGER_DEQUEUE_INTERVAL_MS`: Dequeue interval in ms (default: `100`)
+- `TRIGGER_DEQUEUE_IDLE_INTERVAL_MS`: Idle dequeue interval in ms (default: `100`)
+- `TRIGGER_DEQUEUE_MAX_CONSUMER_COUNT`: Max consumer count for dequeue operations (default: `10`)
+- `TRIGGER_DEQUEUE_MAX_RUN_COUNT`: Max run count for dequeue operations (default: `10`)
 - `RUNNER_PRETTY_LOGS`: Pretty print runner logs (default: `false`)
 - `RUNNER_ADDITIONAL_ENV_VARS`: Additional env vars for runners (CSV format)
 
 ### Telemetry & Monitoring
 
-- `TRIGGER_TELEMETRY_DISABLED`: Disable telemetry (default: `0`, set to `1` to disable)
+- `TRIGGER_TELEMETRY_DISABLED`: Telemetry is disabled by default (hardcoded to `1` in docker-compose.yaml)
 - `INTERNAL_OTEL_TRACE_LOGGING_ENABLED`: Enable internal tracing logs (default: `0`)
 
 ## Networking
